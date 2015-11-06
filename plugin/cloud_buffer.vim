@@ -67,7 +67,7 @@ function! s:buffer_add() abort
 
   let &undolevels = old_undolevels
 
-  setlocal buftype=acwrite noswapfile
+  setlocal buftype=acwrite bufhidden=delete noswapfile
   setlocal nomodified
 
   au! BufWriteCmd <buffer> call s:buffer_update()
@@ -108,7 +108,7 @@ function! s:buffer_get(id) abort
   let b:buffer_id = buffer._id['$oid']
 
   let &undolevels = old_undolevels
-  setlocal buftype=acwrite noswapfile
+  setlocal buftype=acwrite bufhidden=delete noswapfile
   setlocal nomodified
 
   au! BufWriteCmd <buffer> call s:buffer_update()
@@ -152,7 +152,7 @@ function! s:buffers_list() abort
   let lines = map(buffers, 's:format_buffer(v:val)')
   call setline(1, split(join(lines, "\n"), "\n"))
   setlocal nomodifiable
-  setlocal buftype=nofile bufhidden=hide noswapfile
+  setlocal buftype=nofile bufhidden=delete noswapfile
 
   nnoremap <silent> <buffer> <cr> :call <SID>buffers_list_action()<cr>
 
