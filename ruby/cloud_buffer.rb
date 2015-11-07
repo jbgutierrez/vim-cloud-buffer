@@ -17,6 +17,7 @@ module VimCloudBuffer
     end
 
     def update id, data=@data
+      data['content'].force_encoding 'UTF-8'
       yield_to_vim @resource[id].put data.to_json
     end
 
