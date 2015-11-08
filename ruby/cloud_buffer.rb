@@ -42,8 +42,8 @@ module VimCloudBuffer
   class VimGateway < DelegateClass(Gateway)
 
     def initialize
-      api_key = VIM.evaluate "g:vim_cloud_buffer_api_key"
-      url     = VIM.evaluate "g:vim_cloud_buffer_url"
+      url     = ENV.fetch('CLOUD_BUFFER_URL')     { VIM.evaluate "g:vim_cloud_buffer_url" }
+      api_key = ENV.fetch('CLOUD_BUFFER_API_KEY') { VIM.evaluate "g:vim_cloud_buffer_api_key" }
       super Gateway.new url, api_key
     end
 
@@ -95,8 +95,8 @@ module VimCloudBuffer
     require 'json'
     require 'yaml'
 
-    api_key = ENV.fetch('CLOUD_BUFFER_API_KEY') { fail "Set CLOUD_BUFFER_API_KEY on your environment" }
     url     = ENV.fetch('CLOUD_BUFFER_URL')     { fail "Set CLOUD_BUFFER_URL on your environment" }
+    api_key = ENV.fetch('CLOUD_BUFFER_API_KEY') { fail "Set CLOUD_BUFFER_API_KEY on your environment" }
     client  = VimCloudBuffer::Gateway.new url, api_key, debug: true
 
     buffer = JSON.parse client.add content: 'Foo ñ'
