@@ -62,7 +62,7 @@ function! s:buffer_add() abort
   unlet! g:vim_cloud_buffer_data
   let g:vim_cloud_buffer_data = { "content": content }
   redraw | echomsg 'Saving buffer... '
-  ruby VimCloudBuffer::Client.new.add()
+  ruby VimCloudBuffer::gw.add()
   let buffer = g:vim_cloud_buffer_data
 
   let content = buffer.content
@@ -82,7 +82,7 @@ function! s:buffer_update() abort
   unlet! g:vim_cloud_buffer_data
   let g:vim_cloud_buffer_data = b:buffer
   redraw | echomsg 'Updating buffer... '
-  exe "ruby VimCloudBuffer::Client.new.update('".b:buffer_id."')"
+  exe "ruby VimCloudBuffer::gw.update('".b:buffer_id."')"
   let buffer = g:vim_cloud_buffer_data
   setlocal nomodified
 
@@ -94,7 +94,7 @@ function! s:buffer_get(id) abort
   if (exists('b:buffer')) | return | endif
 
   redraw | echomsg 'Getting buffer... '
-  exe "ruby VimCloudBuffer::Client.new.get('".a:id."')"
+  exe "ruby VimCloudBuffer::gw.get('".a:id."')"
   let buffer = g:vim_cloud_buffer_data
   call s:buffer_open('edit:'.a:id, 1)
 
@@ -125,7 +125,7 @@ endfunction
 
 function! s:buffers_list() abort
   redraw | echomsg 'Listing buffers... '
-  ruby VimCloudBuffer::Client.new.list
+  ruby VimCloudBuffer::gw.list
   let buffers = g:vim_cloud_buffer_data
   call s:buffer_open('list', 1)
 
@@ -143,7 +143,7 @@ endfunction
 
 function! s:buffer_delete() abort
   redraw | echomsg 'Deleting buffer... '
-  exe "ruby VimCloudBuffer::Client.new.remove('".b:buffer_id."')"
+  exe "ruby VimCloudBuffer::gw.remove('".b:buffer_id."')"
 
   redraw | echo ''
 endfunction
