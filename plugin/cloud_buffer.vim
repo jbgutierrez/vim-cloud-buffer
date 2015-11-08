@@ -54,7 +54,7 @@ function! s:buffer_open(buffer_name, split) abort
   endif
 endfunction
 
-ruby load "./ruby/cloud_buffer.rb"
+exe "rubyfile " . expand('<sfile>:p:h') . "/../ruby/cloud_buffer.rb"
 
 function! s:buffer_add() abort
   let content = join(getline(0, line('$')), "\n")
