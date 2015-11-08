@@ -91,4 +91,22 @@ module VimCloudBuffer
     @gw ||= VimGateway.new
   end
 
+  if __FILE__ == $0
+    require 'json'
+    require 'yaml'
+
+    api_key = ENV.fetch('CLOUD_BUFFER_API_KEY') { fail "Set CLOUD_BUFFER_API_KEY on your environment" }
+    url     = ENV.fetch('CLOUD_BUFFER_URL')     { fail "Set CLOUD_BUFFER_URL on your environment" }
+    client  = VimCloudBuffer::Gateway.new url, api_key, debug: true
+
+    buffer = JSON.parse client.add content: 'Foo ñ'
+    id     = buffer['_id']['$oid']
+
+    buffer['content'] = 'こんにちは 世界'
+    client.update id, buffer
+    client.get id
+    JSON.parse(client.list).each { |buffer| client.remove buffer['_id']['$oid'] }
+
+    puts JSON.parse(client.list).to_yaml
+  end
 end
