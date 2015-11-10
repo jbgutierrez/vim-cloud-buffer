@@ -10,7 +10,7 @@ module VimCloudBuffer
     def initialize url, api_key, options = {}
       RestClient.log = Logger.new $stderr if options[:debug]
       headers   = { params: { apiKey: api_key }, accept: :json, content_type: :json }
-      @resource = RestClient::Resource.new url, headers: headers
+      @resource = RestClient::Resource.new url, headers: headers, timeout: 5
     end
 
     def add data
