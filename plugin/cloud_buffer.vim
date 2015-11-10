@@ -144,24 +144,27 @@ endfunction
 function! s:buffer_delete() abort
   redraw | echomsg 'Deleting buffer... '
   exe "ruby VimCloudBuffer::gw.remove('".b:buffer_id."')"
-
   redraw | echo ''
 endfunction
 
 function! s:CloudBuffer(bang, ...) abort
   let args = (a:0 > 0) ? split(a:1, '\W\+') : [ 'list' ]
   for arg in args
-    if arg =~# '\v^(l|list)$'
-      call s:buffers_list()
-    elseif arg =~# '\v^(d|delete)$'
-      call s:buffer_delete()
-    elseif arg =~# '\v^(s|save)$'
-      if exists('b:buffer')
-        call s:buffer_update()
-      else
-        call s:buffer_add()
+    try
+      if arg =~# '\v^(l|list)$'
+        call s:buffers_list()
+      elseif arg =~# '\v^(d|delete)$'
+        call s:buffer_delete()
+      elseif arg =~# '\v^(s|save)$'
+        if exists('b:buffer')
+          call s:buffer_update()
+        else
+          call s:buffer_add()
+        end
       end
-    end
+    catch
+      call s:error(v:errmsg)
+    endtry
   endfor
 endfunction
 

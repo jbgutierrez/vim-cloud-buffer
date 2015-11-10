@@ -2,6 +2,7 @@
 require 'rubygems'
 require 'rest-client'
 require "delegate"
+require 'logger'
 
 module VimCloudBuffer
 
@@ -87,8 +88,33 @@ module VimCloudBuffer
 
   end
 
+  class SafeProxy < BasicObject
+
+    def initialize object
+      @object = object
+    end
+
+    def method_missing name, *args, &block
+      begin
+        @object.public_send name, *args, &block
+      rescue ::Exception => e
+        ::VIM.command "let v:errmsg='#{e.message}'"
+        ::Kernel.raise e
+      end
+    end
+
+    def inspect
+      "SafeProxy(#{@object.inspect})"
+    end
+
+    def __object__
+      @object
+    end
+
+  end
+
   def self.gw
-    @gw ||= VimGateway.new
+    @gw ||= SafeProxy.new VimGateway.new
   end
 
   if __FILE__ == $0
@@ -97,7 +123,7 @@ module VimCloudBuffer
 
     url     = ENV.fetch('CLOUD_BUFFER_URL')     { fail "Set CLOUD_BUFFER_URL on your environment" }
     api_key = ENV.fetch('CLOUD_BUFFER_API_KEY') { fail "Set CLOUD_BUFFER_API_KEY on your environment" }
-    client  = VimCloudBuffer::Gateway.new url, api_key, debug: true
+    client  = Gateway.new url, api_key, debug: true
 
     buffer = JSON.parse client.add content: 'Foo ñ'
     id     = buffer['_id']['$oid']
@@ -109,4 +135,5 @@ module VimCloudBuffer
 
     puts JSON.parse(client.list).to_yaml
   end
+
 end
