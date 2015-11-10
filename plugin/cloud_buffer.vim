@@ -55,15 +55,21 @@ function! s:buffer_open(buffer_name, split) abort
 endfunction
 
 exe "rubyfile " . expand('<sfile>:p:h') . "/../ruby/cloud_buffer.rb"
+function! s:rest_api(cmd, ...)
+  if (a:0 > 0)
+    unlet! g:vim_cloud_buffer_data
+    let g:vim_cloud_buffer_data = a:1
+  endif
+  exe "ruby VimCloudBuffer::gw.".a:cmd
+  return g:vim_cloud_buffer_data
+endfunction
 
 function! s:buffer_add() abort
   let content = join(getline(0, line('$')), "\n")
 
-  unlet! g:vim_cloud_buffer_data
-  let g:vim_cloud_buffer_data = { "content": content }
   redraw | echomsg 'Saving buffer... '
-  ruby VimCloudBuffer::gw.add()
-  let buffer = g:vim_cloud_buffer_data
+
+  let buffer = s:rest_api('add', { "content": content })
 
   let content = buffer.content
   call setline(1, split(content, "\n"))
@@ -77,15 +83,10 @@ function! s:buffer_add() abort
 endfunction
 
 function! s:buffer_update() abort
-
-  let b:buffer.content = join(getline(0, line('$')), "\n")
-  unlet! g:vim_cloud_buffer_data
-  let g:vim_cloud_buffer_data = b:buffer
   redraw | echomsg 'Updating buffer... '
-  exe "ruby VimCloudBuffer::gw.update('".b:buffer_id."')"
-  let buffer = g:vim_cloud_buffer_data
+  let b:buffer.content = join(getline(0, line('$')), "\n")
+  let buffer = s:rest_api('update("'.b:buffer_id.'")', b:buffer)
   setlocal nomodified
-
   redraw | echo ''
 endfunction
 
@@ -94,8 +95,7 @@ function! s:buffer_get(id) abort
   if (exists('b:buffer')) | return | endif
 
   redraw | echomsg 'Getting buffer... '
-  exe "ruby VimCloudBuffer::gw.get('".a:id."')"
-  let buffer = g:vim_cloud_buffer_data
+  let buffer = s:rest_api('get("'.a:id.'")')
   call s:buffer_open('edit:'.a:id, 1)
 
   call setline(1, split(buffer.content, "\n"))
@@ -125,8 +125,8 @@ endfunction
 
 function! s:buffers_list() abort
   redraw | echomsg 'Listing buffers... '
-  ruby VimCloudBuffer::gw.list
-  let buffers = g:vim_cloud_buffer_data
+
+  let buffers = s:rest_api('list')
   call s:buffer_open('list', 1)
 
   setlocal modifiable
@@ -143,7 +143,7 @@ endfunction
 
 function! s:buffer_delete() abort
   redraw | echomsg 'Deleting buffer... '
-  exe "ruby VimCloudBuffer::gw.remove('".b:buffer_id."')"
+  call s:rest_api('remove("'.b:buffer_id.'")')
   redraw | echo ''
 endfunction
 
