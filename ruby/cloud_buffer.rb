@@ -3,6 +3,7 @@ require 'rubygems'
 require 'rest-client'
 require "delegate"
 require 'logger'
+require 'json'
 
 module VimCloudBuffer
 
@@ -97,8 +98,9 @@ module VimCloudBuffer
     def method_missing name, *args, &block
       begin
         @object.public_send name, *args, &block
-      rescue ::Exception => e
-        ::VIM.command "let v:errmsg='#{e.message}'"
+      rescue ::RestClient::Exception => e
+        message = ::JSON.parse(e.response)['message'] || e.message
+        ::VIM.command "let v:errmsg='#{message}'"
         ::Kernel.raise e
       end
     end
@@ -118,7 +120,6 @@ module VimCloudBuffer
   end
 
   if __FILE__ == $0
-    require 'json'
     require 'yaml'
 
     url     = ENV.fetch('CLOUD_BUFFER_URL')     { fail "Set CLOUD_BUFFER_URL on your environment" }
