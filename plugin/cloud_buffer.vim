@@ -152,6 +152,8 @@ function! s:buffers_list() abort
 endfunction
 
 function! s:buffer_delete() abort
+  let choice = confirm("Are you sure you want to delete?", "&Yes\n&No", 0)
+  if choice != 1 | return | endif
   redraw | echomsg 'Deleting buffer... '
   call s:rest_api('remove("'.b:buffer_id.'")')
   redraw | echo ''
