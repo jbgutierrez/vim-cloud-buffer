@@ -57,19 +57,28 @@ endfunction
 exe "rubyfile " . expand('<sfile>:p:h') . "/../ruby/cloud_buffer.rb"
 function! s:rest_api(cmd, ...)
   if (a:0 > 0)
+    let buffer = a:1
+    let pos = getpos('.')
+    let options = {
+      \ 'filetype': &filetype,
+      \ 'lnum': pos[1],
+      \ 'col': pos[2]
+      \ }
+    call extend(buffer, {
+      \ 'content': join(getline(0, line('$')), "\n"),
+      \ 'options': options
+      \ })
     unlet! g:vim_cloud_buffer_data
-    let g:vim_cloud_buffer_data = a:1
+    let g:vim_cloud_buffer_data = buffer
   endif
   exe "ruby VimCloudBuffer::gw.".a:cmd
   return g:vim_cloud_buffer_data
 endfunction
 
 function! s:buffer_add() abort
-  let content = join(getline(0, line('$')), "\n")
-
   redraw | echomsg 'Saving buffer... '
 
-  let buffer = s:rest_api('add', { "content": content })
+  let buffer = s:rest_api('add', {})
 
   let content = buffer.content
   call setline(1, split(content, "\n"))
@@ -84,7 +93,6 @@ endfunction
 
 function! s:buffer_update() abort
   redraw | echomsg 'Updating buffer... '
-  let b:buffer.content = join(getline(0, line('$')), "\n")
   let buffer = s:rest_api('update("'.b:buffer_id.'")', b:buffer)
   setlocal nomodified
   redraw | echo ''
@@ -97,8 +105,10 @@ function! s:buffer_get(id) abort
   redraw | echomsg 'Getting buffer... '
   let buffer = s:rest_api('get("'.a:id.'")')
   call s:buffer_open('edit:'.a:id, 1)
-
   call setline(1, split(buffer.content, "\n"))
+  let options = buffer.options
+  let &filetype = options.filetype
+  call cursor(options.lnum, options.col)
   let b:buffer = buffer
   let b:buffer_id = buffer._id['$oid']
   au! BufWriteCmd <buffer> call s:buffer_update()
