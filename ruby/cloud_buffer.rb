@@ -91,16 +91,21 @@ module VimCloudBuffer
 
   class SafeProxy < BasicObject
 
-    def initialize object
-      @object = object
+    def initialize &loader
+      @loader = loader
+      @object = nil
     end
 
     def method_missing name, *args, &block
       begin
+        @object ||= @loader.call
         @object.public_send name, *args, &block
       rescue ::RestClient::Exception => e
         message = ::JSON.parse(e.response)['message'] || e.message
         ::VIM.command "let v:errmsg='#{message}'"
+        ::Kernel.raise e
+      rescue ::Exception => e
+        ::VIM.command "let v:errmsg='#{e.message}'"
         ::Kernel.raise e
       end
     end
@@ -116,7 +121,7 @@ module VimCloudBuffer
   end
 
   def self.gw
-    @gw ||= SafeProxy.new VimGateway.new
+    @gw ||= SafeProxy.new { VimGateway.new }
   end
 
   if __FILE__ == $0
