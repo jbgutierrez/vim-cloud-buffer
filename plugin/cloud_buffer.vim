@@ -57,19 +57,22 @@ endfunction
 exe "rubyfile " . expand('<sfile>:p:h') . "/../ruby/cloud_buffer.rb"
 function! s:rest_api(cmd, ...)
   if (a:0 > 0)
-    let buffer = a:1
-    let pos = getpos('.')
-    let options = {
-      \ 'filetype': &filetype,
-      \ 'lnum': pos[1],
-      \ 'col': pos[2]
-      \ }
-    call extend(buffer, {
-      \ 'content': join(getline(0, line('$')), "\n"),
-      \ 'options': options
-      \ })
+    let data = a:1
+    if a:cmd != 'list'
+      let pos = getpos('.')
+      let options = {
+        \ 'filetype': &filetype,
+        \ 'lnum': pos[1],
+        \ 'col': pos[2]
+        \ }
+      call extend(data, {
+        \ 'content': join(getline(0, line('$')), "\n"),
+        \ 'options': options,
+        \ 'updated_at': localtime()
+        \ })
+    endif
     unlet! g:vim_cloud_buffer_data
-    let g:vim_cloud_buffer_data = buffer
+    let g:vim_cloud_buffer_data = data
   endif
   exe "ruby VimCloudBuffer::gw.".a:cmd
   return g:vim_cloud_buffer_data
@@ -78,7 +81,7 @@ endfunction
 function! s:buffer_add() abort
   redraw | echomsg 'Saving buffer... '
 
-  let buffer = s:rest_api('add', {})
+  let buffer = s:rest_api('add', { 'created_at': localtime() })
 
   let content = buffer.content
   call setline(1, split(content, "\n"))
@@ -136,7 +139,7 @@ endfunction
 function! s:buffers_list() abort
   redraw | echomsg 'Listing buffers... '
 
-  let buffers = s:rest_api('list')
+  let buffers = s:rest_api('list', { 's': { 'updated_at': -1 } })
   call s:buffer_open('list', 1)
 
   setlocal modifiable

@@ -11,7 +11,8 @@ module VimCloudBuffer
 
     def initialize url, api_key, options = {}
       RestClient.log = Logger.new $stderr if options[:debug]
-      headers   = { params: { apiKey: api_key }, accept: :json, content_type: :json }
+      @params   = { apiKey: api_key }
+      headers   = { params: @params, accept: :json, content_type: :json }
       @resource = RestClient::Resource.new url, headers: headers, timeout: 5
     end
 
@@ -27,8 +28,8 @@ module VimCloudBuffer
       @resource[id].get
     end
 
-    def list
-      @resource.get
+    def list data={}
+      @resource.get params: to_params(data)
     end
 
     def find
@@ -37,6 +38,12 @@ module VimCloudBuffer
 
     def remove id
       @resource[id].delete
+    end
+
+    private
+
+    def to_params data
+      @params.merge data
     end
 
   end
@@ -62,7 +69,7 @@ module VimCloudBuffer
     end
 
     def list
-      send_data super
+      send_data super get_data
     end
 
     def find
@@ -83,7 +90,14 @@ module VimCloudBuffer
 
     def get_data
       data = VIM.evaluate "g:vim_cloud_buffer_data"
-      data['content'].force_encoding 'UTF-8'
+
+      data.fetch('content', '').force_encoding 'UTF-8'
+
+      json_parameters = %w[q f s]
+      json_parameters.each do |param|
+        data[param] = data[param].to_json if data[param]
+      end
+
       data
     end
 
