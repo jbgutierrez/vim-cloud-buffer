@@ -146,7 +146,7 @@ function! s:buffers_list_action(action) abort
   endif
 endfunction
 
-function! s:buffers_list(include_deleted) abort
+function! s:buffers_list(include_deleted,regex) abort
   redraw | echomsg 'Listing buffers... '
 
   let options = {
@@ -154,10 +154,12 @@ function! s:buffers_list(include_deleted) abort
         \     'updated_at': -1
         \   },
         \   'q': {
-        \     'deleted_at': { '$exists': 0 }
+        \     'deleted_at': { '$exists': 0 },
+        \     'content': { '$regex': a:regex }
         \   }
         \ }
-  if a:include_deleted | unlet options.q | endif
+  if a:include_deleted | unlet options.q.deleted_at | endif
+  if a:regex == '' | unlet options.q.content | endif
   let buffers = s:rest_api('list', options)
   call s:buffer_open('list', 1)
 
@@ -195,25 +197,44 @@ function! s:buffer_restore(id) abort
   redraw | echo ''
 endfunction
 
+function! s:shellwords(str) abort
+  let words = split(a:str, '\%(\([^ \t\''"]\+\)\|''\([^\'']*\)''\|"\(\%([^\"\\]\|\\.\)*\)"\)\zs\s*\ze')
+  let words = map(words, 'substitute(v:val, ''\\\([\\ ]\)'', ''\1'', "g")')
+  let words = map(words, 'matchstr(v:val, ''^\%\("\zs\(.*\)\ze"\|''''\zs\(.*\)\ze''''\|.*\)$'')')
+  return words
+endfunction
+
 function! s:CloudBuffer(bang, ...) abort
-  let args = (a:0 > 0) ? split(a:1, '\W\+') : [ 'list' ]
-  for arg in args
-    try
-      if arg =~# '\v^(l|list)$'
-        call s:buffers_list(a:bang)
-      elseif arg =~# '\v^(d|delete)$'
+  try
+    let args = (a:0 > 0) ? s:shellwords(a:1) : [ '--list' ]
+
+    let idx=0
+    for arg in args
+      if arg =~# '\v^(-l|--list)$'
+        let regex = ''
+      elseif arg =~# '\v^(-d|--delete)$'
         call s:buffer_delete(a:bang)
-      elseif arg =~# '\v^(s|save)$'
+      elseif arg =~# '\v^(-s|--save)$'
         if exists('b:buffer')
           call s:buffer_update()
         else
           call s:buffer_add()
         end
+      elseif arg =~# '\v^(-re|--regex)$'
+        let regex = ''
+        if exists('args['.(idx+1).']')
+          let regex = args[idx+1]
+        endif
       end
-    catch
-      call s:error(v:errmsg)
-    endtry
-  endfor
+      let idx = idx + 1
+    endfor
+
+    if exists('regex')
+      call s:buffers_list(a:bang, regex)
+    endif
+  catch
+    call s:error(v:errmsg)
+  endtry
 endfunction
 
 "}}}
@@ -221,7 +242,7 @@ endfunction
 " Commands {{{
 
 function! s:CloudBufferArgs(A,L,P)
-  return [ "-l", "--list", "-d", "--delete", "-s", "--save" ]
+  return [ "-l", "--list", "-d", "--delete", "-s", "--save", "-re", "--regex" ]
 endfunction
 
 command! -nargs=? -bang -complete=customlist,<sid>CloudBufferArgs CloudBuffer call <sid>CloudBuffer(<bang>0, <f-args>)
