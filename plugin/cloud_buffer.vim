@@ -143,6 +143,21 @@ function! s:buffers_list_action(action) abort
       call s:buffer_restore(id)
     end
   endif
+  if line =~# '^more\.\.\.$'
+    let b:options.sk += 1000
+    let buffers = s:rest_api('list', b:options)
+    call s:buffers_list_append(buffers)
+  endif
+endfunction
+
+function s:buffers_list_append(buffers)
+  setlocal modifiable
+  let position = b:options.sk
+  if !position | 0,%delete | endif
+  let lines = map(a:buffers, 's:format_buffer(v:val)')
+  call setline(position + 1, lines)
+  if len(a:buffers) == 1000 | $put='more...' | endif
+  setlocal nomodifiable
 endfunction
 
 function! s:buffers_list(include_deleted,regex) abort
@@ -155,7 +170,8 @@ function! s:buffers_list(include_deleted,regex) abort
         \   'q': {
         \     'deleted_at': { '$exists': 0 },
         \     'content': { '$regex': a:regex }
-        \   }
+        \   },
+        \   'sk': 0
         \ }
   if a:include_deleted | unlet options.q.deleted_at | endif
   if a:regex == '' | unlet options.q.content | endif
@@ -164,11 +180,8 @@ function! s:buffers_list(include_deleted,regex) abort
 
   hi def link CloudBufferDeleted Comment
   syn clear CloudBufferDeleted
-  setlocal modifiable
-  let lines = map(buffers, 's:format_buffer(v:val)')
-  0,%delete
-  call setline(1, split(join(lines, "\n"), "\n"))
-  setlocal nomodifiable
+  let b:options = options
+  call s:buffers_list_append(buffers)
   setlocal buftype=nofile bufhidden=delete noswapfile
 
   nnoremap <silent> <buffer> <cr> :call <sid>buffers_list_action('get')<cr>
