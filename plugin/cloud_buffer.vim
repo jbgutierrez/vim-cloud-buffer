@@ -6,7 +6,6 @@
 if ( exists('g:loaded_cloud_buffer') && g:loaded_cloud_buffer ) || v:version < 700 || &cp
   finish
 endif
-" let g:loaded_cloud_buffer = 1
 
 if !has('ruby')
   echohl WarningMsg
@@ -15,8 +14,8 @@ if !has('ruby')
   finish
 endif
 
-unlet! g:vim_cloud_buffer_data
-let g:vim_cloud_buffer_data=0
+let g:loaded_cloud_buffer   = 1
+let g:vim_cloud_buffer_data = 0
 
 " Functions {{{
 
