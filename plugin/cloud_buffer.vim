@@ -88,9 +88,16 @@ function! s:buffer_add() abort
 
   let content = buffer.content
   call setline(1, split(content, "\n"))
-  setlocal nomodified
+
   let b:buffer = buffer
   let b:buffer_id = buffer._id['$oid']
+
+  if bufname('%') == ''
+    let buffer_name = s:bufprefix.'edit:'.b:buffer_id
+    exe "file ".buffer_name
+  else
+    write
+  endif
 
   au! BufWriteCmd <buffer> call s:buffer_update()
 
@@ -100,7 +107,11 @@ endfunction
 function! s:buffer_update() abort
   redraw | echomsg 'Updating buffer... '
   let buffer = s:rest_api('update("'.b:buffer_id.'")', s:serialize_buffer())
-  setlocal nomodified
+  if bufname('%') =~# s:bufprefix.'edit'
+    setlocal nomodified
+  else
+    write
+  endif
   redraw | echo ''
 endfunction
 
