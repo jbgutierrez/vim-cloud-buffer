@@ -156,8 +156,10 @@ function! s:buffers_list_action(action) abort
   endif
   if line =~# '^more\.\.\.$'
     let b:options.sk += 1000
+    redraw | echomsg 'Loading more buffers...'
     let buffers = s:rest_api('list', b:options)
     call s:buffers_list_append(buffers)
+    redraw | echo ''
   endif
 endfunction
 
@@ -167,12 +169,12 @@ function s:buffers_list_append(buffers)
   if !position | 0,%delete | endif
   let lines = map(a:buffers, 's:format_buffer(v:val)')
   call setline(position + 1, lines)
-  if len(a:buffers) == 1000 | $put='more...' | endif
+  if len(a:buffers) == 1000 | call append('$', 'more...') | endif
   setlocal nomodifiable
 endfunction
 
 function! s:buffers_list(include_deleted,regex) abort
-  redraw | echomsg 'Listing buffers... '
+  redraw | echomsg 'Listing buffers...'
 
   let options = {
         \   's': {
