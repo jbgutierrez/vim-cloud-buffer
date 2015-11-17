@@ -94,23 +94,27 @@ function! s:buffer_add() abort
 
   if bufname('%') == ''
     let buffer_name = s:bufprefix.'edit:'.b:buffer_id
-    exe "file ".buffer_name
+    exe "file" buffer_name
   else
     write
   endif
 
-  au! BufWriteCmd <buffer> call s:buffer_update()
+  au! BufWriteCmd <buffer> call s:buffer_update(expand("<amatch>"))
 
   redraw | echo ''
 endfunction
 
-function! s:buffer_update() abort
+function! s:buffer_update(fname) abort
   redraw | echomsg 'Updating buffer... '
   let buffer = s:rest_api('update("'.b:buffer_id.'")', s:serialize_buffer())
-  if bufname('%') =~# s:bufprefix.'edit'
-    setlocal nomodified
+  if a:fname !~# s:bufprefix.'edit'
+    setlocal buftype=
+    if a:fname != bufname('%')
+      exe 'file' a:fname
+    endif
+    exe 'w' (v:cmdbang ? '!' : '') a:fname
   else
-    write
+    setlocal nomodified
   endif
   redraw | echo ''
 endfunction
@@ -128,7 +132,7 @@ function! s:buffer_get(id) abort
   call cursor(options.lnum, options.col)
   let b:buffer = buffer
   let b:buffer_id = buffer._id['$oid']
-  au! BufWriteCmd <buffer> call s:buffer_update()
+  au! BufWriteCmd <buffer> call s:buffer_update(expand("<amatch>"))
   setlocal buftype=acwrite bufhidden=delete noswapfile
   setlocal nomodified
 
