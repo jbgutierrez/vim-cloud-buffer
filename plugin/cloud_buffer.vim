@@ -233,6 +233,7 @@ function! s:shellwords(str) abort
   return words
 endfunction
 
+let s:UNKNOWN_RE = '\v^--*(.*)$'
 function! s:CloudBuffer(bang, ...) abort
   try
     let args = (a:0 > 0) ? s:shellwords(a:1) : [ '--list' ]
@@ -254,6 +255,8 @@ function! s:CloudBuffer(bang, ...) abort
         if exists('args['.(idx+1).']')
           let regex = args[idx+1]
         endif
+      elseif arg =~# s:UNKNOWN_RE
+        throw "Unknown option ".matchlist(arg, s:UNKNOWN_RE)[1]
       end
       let idx = idx + 1
     endfor
