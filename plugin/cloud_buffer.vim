@@ -264,8 +264,10 @@ function! s:CloudBuffer(bang, ...) abort
     if exists('regex')
       call s:buffers_list(a:bang, regex)
     endif
-  catch
+  catch /RestClient/
     call s:error(v:errmsg)
+  catch
+    call s:error(v:exception)
   endtry
 endfunction
 
