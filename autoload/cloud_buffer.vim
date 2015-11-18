@@ -233,7 +233,7 @@ function! cloud_buffer#CloudBuffer(bang, ...) abort
         call s:buffer_delete(a:bang)
       elseif arg =~# '\v^(-s|--save)$'
         if exists('b:buffer')
-          call s:buffer_update()
+          throw 'Please type ":w" to save your buffer contents'
         else
           call s:buffer_add()
         end
