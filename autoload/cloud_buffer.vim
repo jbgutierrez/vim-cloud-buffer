@@ -69,8 +69,10 @@ endfunction
 function! s:buffer_add() abort
   redraw | echomsg 'Saving buffer... '
 
+  let unnamed_buffer = bufname('%') == ''
   let buffer = s:serialize_buffer()
   let buffer.created_at = localtime()
+  if !unnamed_buffer | let buffer.buffer_name = bufname('%') | endif
   let buffer = s:rest_api('add', buffer)
 
   let content = buffer.content
@@ -79,7 +81,7 @@ function! s:buffer_add() abort
   let b:buffer = buffer
   let b:buffer_id = buffer._id['$oid']
 
-  if bufname('%') == ''
+  if unnamed_buffer
     let buffer_name = s:bufprefix.'edit:'.b:buffer_id
     exe "file" buffer_name
   else
@@ -93,8 +95,14 @@ endfunction
 
 function! s:buffer_update(fname) abort
   redraw | echomsg 'Updating buffer... '
-  let buffer = s:rest_api('update("'.b:buffer_id.'")', s:serialize_buffer())
-  if a:fname !~# s:bufprefix.'edit'
+  let buffer = s:serialize_buffer()
+  let synced = a:fname !~# s:bufprefix.'edit'
+  if synced | let buffer.buffer_name = fnamemodify(a:fname, ':t') | endif
+  if exists('buffer.buffer_name')
+    file s:bufprefix.'edit:'.a:id.''.buffer.buffer_name
+  endif
+  let buffer = s:rest_api('update("'.b:buffer_id.'")', buffer)
+  if synced
     setlocal buftype=
     if a:fname != bufname('%')
       exe 'file' a:fname
@@ -107,12 +115,17 @@ function! s:buffer_update(fname) abort
 endfunction
 
 function! s:buffer_get(id) abort
-  call s:buffer_open('edit:'.a:id, 0)
+  let buffer_name = 'edit:'.a:id
+
+  call s:buffer_open(buffer_name, 0)
   if (exists('b:buffer')) | return | endif
 
   redraw | echomsg 'Getting buffer... '
   let buffer = s:rest_api('get("'.a:id.'")')
-  call s:buffer_open('edit:'.a:id, 1)
+  call s:buffer_open(buffer_name, 1)
+  if exists('buffer.buffer_name')
+    exe "file" buffer_name.':'.buffer.buffer_name
+  endif
   call setline(1, split(buffer.content, "\n"))
   let options = buffer.options
   let &filetype = options.filetype
