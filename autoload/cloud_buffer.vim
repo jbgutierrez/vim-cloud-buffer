@@ -25,6 +25,30 @@ function! s:sub(str,pat,rep)
   return substitute(a:str,'\v\C'.a:pat,a:rep,'')
 endfunction
 
+function! s:distance_of_time_in_words(since_time)
+  let now = localtime()
+  let distance_in_seconds = now - a:since_time
+  let distance_in_minutes = distance_in_seconds / 60
+
+  if distance_in_minutes < 1
+    return distance_in_seconds."s"
+  elseif distance_in_minutes < 91
+    return distance_in_minutes."m"
+  elseif distance_in_minutes < 1440 " up to 24 hours
+    let hours = float2nr(round(distance_in_minutes / 60))
+    return hours . "h"
+  elseif distance_in_minutes < 43200 " up to 30 days
+    let days = float2nr(round(distance_in_minutes / 1440))
+    return days."d"
+  elseif distance_in_minutes < 525600 " up to 365 days
+    let months = float2nr(floor(distance_in_minutes / 43200))
+    return months."m"
+  else
+    let years = float2nr(floor(distance_in_minutes / 518400))
+    return years."y"
+  endif
+endfunction
+
 let s:bufprefix = 'buffers' . (has('unix') ? ':' : '_')
 function! s:buffer_open(buffer_name, split) abort
   let buffer_name = s:bufprefix.a:buffer_name
@@ -142,16 +166,20 @@ endfunction
 function! s:format_buffer(buffer) abort
   let content = substitute(a:buffer.content, '[\r\n\t]', ' ', 'g')
   let content = substitute(content, '  ', ' ', 'g')
+  let lines   = len(split(a:buffer.content, "\n"))
   let id      = a:buffer._id['$oid']
   if exists('a:buffer.deleted_at') | exe 'syn match CloudBufferDeleted ".*'.id.'.*"' | endif
-  return printf('buffer: %s %s', id, content)
+  let filetype = a:buffer.options.filetype
+  let updated_at = s:distance_of_time_in_words(a:buffer.updated_at)
+  let buffer_name = exists('a:buffer.buffer_name') ? a:buffer.buffer_name : id
+  return printf(' %4S  |  %4S  |  %-9s  |  %-24s  |  %s (%14s)', updated_at, lines, filetype, buffer_name, content, id)
 endfunction
 
 function! s:buffers_list_action(action) abort
   let line = getline('.')
-  let regex = '^buffer: \([0-9a-z]\+\) '
+  let regex = '\v<[0-9a-z]{24}>'
   if line =~ regex
-    let id = matchlist(line, regex)[1]
+    let id = matchlist(line, regex)[0]
     if a:action == 'get'
       call s:buffer_get(id)
     elseif a:action == 'restore'
@@ -170,9 +198,15 @@ endfunction
 function s:buffers_list_append(buffers)
   setlocal modifiable
   let position = b:options.sk
-  if !position | 0,%delete | endif
+  let horizontal_line = '-------|--------|--------------|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
+  if !position
+    0,%delete
+    let header = ' date  |  locs  |  filetype    |  buffer name               |  contents'
+    call append(0, [horizontal_line, header, horizontal_line])
+  endif
   let lines = map(a:buffers, 's:format_buffer(v:val)')
-  call setline(position + 1, lines)
+  call setline(position + 4, lines)
+  call append('$', horizontal_line)
   if len(a:buffers) == 1000 | call append('$', 'more...') | endif
   setlocal nomodifiable
 endfunction
@@ -198,6 +232,7 @@ function! s:buffers_list(include_deleted,regex) abort
   hi def link CloudBufferDeleted Comment
   syn clear CloudBufferDeleted
   let b:options = options
+
   call s:buffers_list_append(buffers)
   setlocal buftype=nofile bufhidden=delete noswapfile
 
