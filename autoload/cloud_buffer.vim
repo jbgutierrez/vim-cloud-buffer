@@ -75,17 +75,26 @@ function! s:rest_api(cmd, ...)
 endfunction
 
 function! s:serialize_buffer()
-  let buffer = {}
+  let now = localtime()
+  if exists('b:buffer')
+    let buffer = b:buffer
+  else
+    let buffer = { 'created_at': now, 'updated_at': now }
+  endif
+
+  if now - buffer.updated_at > 3600 | let buffer.updates += 1 | endif
+
   let pos = getpos('.')
   let options = {
     \ 'filetype': &filetype,
     \ 'lnum': pos[1],
     \ 'col': pos[2]
     \ }
+
   call extend(buffer, {
     \ 'content': join(getline(0, line('$')), "\n"),
     \ 'options': options,
-    \ 'updated_at': localtime()
+    \ 'updated_at': now
     \ })
   return buffer
 endfunction
@@ -95,7 +104,6 @@ function! s:buffer_add() abort
 
   let unnamed_buffer = bufname('%') == ''
   let buffer = s:serialize_buffer()
-  let buffer.created_at = localtime()
   if !unnamed_buffer | let buffer.buffer_name = bufname('%') | endif
   let buffer = s:rest_api('add', buffer)
 
@@ -120,7 +128,7 @@ endfunction
 function! s:buffer_update(fname) abort
   redraw | echomsg 'Updating buffer... '
   let buffer = s:serialize_buffer()
-  let synced = a:fname !~# s:bufprefix.'edit'
+  let synced = a:fname !~# '^'.s:bufprefix.'edit'
   if synced | let buffer.buffer_name = fnamemodify(a:fname, ':t') | endif
   if exists('buffer.buffer_name')
     file s:bufprefix.'edit:'.a:id.''.buffer.buffer_name
@@ -249,8 +257,7 @@ function! s:buffer_delete(permanent) abort
   if a:permanent
     call s:rest_api('remove("'.b:buffer_id.'")')
   else
-    let b:buffer.deleted_at = localtime()
-    call s:rest_api('update("'.b:buffer_id.'")', b:buffer)
+    call s:rest_api('update("'.b:buffer_id.'")', { '$set': { 'deleted_at': localtime() } })
   end
   redraw | echo ''
 endfunction
