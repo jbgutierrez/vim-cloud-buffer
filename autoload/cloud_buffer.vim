@@ -49,7 +49,7 @@ function! s:distance_of_time_in_words(since_time)
   endif
 endfunction
 
-let s:bufprefix = 'buffers' . (has('unix') ? ':' : '_')
+let s:bufprefix = 'buffers:'
 function! s:buffer_open(buffer_name, split) abort
   let buffer_name = s:bufprefix.a:buffer_name
   let winnum = bufwinnr(bufnr(buffer_name))
@@ -104,7 +104,7 @@ function! s:buffer_add() abort
 
   let unnamed_buffer = bufname('%') == ''
   let buffer = s:serialize_buffer()
-  if !unnamed_buffer | let buffer.buffer_name = bufname('%') | endif
+  if !unnamed_buffer | let buffer.buffer_name = fnamemodify(bufname('%'), ':t') | endif
   let buffer = s:rest_api('add', buffer)
 
   let content = buffer.content
@@ -115,9 +115,9 @@ function! s:buffer_add() abort
 
   if unnamed_buffer
     let buffer_name = s:bufprefix.'edit:'.b:buffer_id
-    exe "file" buffer_name
+    exe 'file' buffer_name
   else
-    write
+    exe 'w' (v:cmdbang ? '!' : '')
   endif
 
   au! BufWriteCmd <buffer> call s:buffer_update(expand("<amatch>"))
@@ -127,20 +127,20 @@ endfunction
 
 function! s:buffer_update(fname) abort
   redraw | echomsg 'Updating buffer... '
+  let buffer_name = fnamemodify(a:fname, ':t')
   let buffer = s:serialize_buffer()
-  let synced = a:fname !~# '^'.s:bufprefix.'edit'
-  if synced | let buffer.buffer_name = fnamemodify(a:fname, ':t') | endif
-  if exists('buffer.buffer_name')
-    file s:bufprefix.'edit:'.a:id.''.buffer.buffer_name
-  endif
+  let synced =  a:fname !~# b:buffer_id
+
+  if synced | let buffer.buffer_name = buffer_name | endif
   let buffer = s:rest_api('update("'.b:buffer_id.'")', buffer)
   if synced
-    setlocal buftype=
-    if a:fname != bufname('%')
+    if buffer_name != fnamemodify(bufname('%'), ':t')
+      setlocal buftype=
       exe 'file' a:fname
     endif
-    exe 'w' (v:cmdbang ? '!' : '') a:fname
-  else
+    exe 'w' (v:cmdbang ? '!' : '')
+  elseif exists('buffer.buffer_name')
+    exe 'file' s:bufprefix.'edit:'.b:buffer_id.':'.buffer.buffer_name
     setlocal nomodified
   endif
   redraw | echo ''
@@ -156,7 +156,7 @@ function! s:buffer_get(id) abort
   let buffer = s:rest_api('get("'.a:id.'")')
   call s:buffer_open(buffer_name, 1)
   if exists('buffer.buffer_name')
-    exe "file" buffer_name.':'.buffer.buffer_name
+    exe "file" s:bufprefix.buffer_name.':'.buffer.buffer_name
   endif
   call setline(1, split(buffer.content, "\n"))
   let options = buffer.options
