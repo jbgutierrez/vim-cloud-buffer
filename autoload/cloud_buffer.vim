@@ -180,14 +180,14 @@ function! s:format_buffer(buffer) abort
   let filetype = a:buffer.options.filetype
   let updated_at = s:distance_of_time_in_words(a:buffer.updated_at)
   let buffer_name = exists('a:buffer.buffer_name') ? a:buffer.buffer_name : id
-  return printf(' %4S  |  %4S  |  %-9s  |  %-24s  |  %s (%14s)', updated_at, lines, filetype, buffer_name, content, id)
+  return printf(' %4S  |  %4S  |  %-10s  |  %-24s  |  BufferId:%14s  |  %s ', updated_at, lines, filetype, buffer_name, id, content)
 endfunction
 
+let s:BUFFER_ID_RE = '\vBufferId:<([0-9a-z]{24})>'
 function! s:buffers_list_action(action) abort
   let line = getline('.')
-  let regex = '\v<[0-9a-z]{24}>'
-  if line =~ regex
-    let id = matchlist(line, regex)[0]
+  if line =~ s:BUFFER_ID_RE
+    let id = matchlist(line, s:BUFFER_ID_RE)[1]
     if a:action == 'get'
       call s:buffer_get(id)
     elseif a:action == 'restore'
@@ -206,10 +206,10 @@ endfunction
 function s:buffers_list_append(buffers)
   setlocal modifiable
   let position = b:options.sk
-  let horizontal_line = '-------|--------|--------------|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
+  let horizontal_line = '-------|--------|--------------|----------------------------|-------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
   if !position
     0,%delete
-    let header = ' date  |  locs  |  filetype    |  buffer name               |  contents'
+    let header = ' date  |  locs  |  filetype    |  buffer name               |  id                                 |  contents'
     call append(0, [horizontal_line, header, horizontal_line])
   endif
   let lines = map(a:buffers, 's:format_buffer(v:val)')
@@ -278,7 +278,17 @@ endfunction
 let s:UNKNOWN_RE = '\v^--*(.*)$'
 function! cloud_buffer#CloudBuffer(bang, ...) abort
   try
-    let args = (a:0 > 0) ? s:shellwords(a:1) : [ '--list' ]
+    if a:0
+      let args = s:shellwords(a:1)
+    else
+      let cWORD = expand("<cWORD>").getline('.')
+      if cWORD =~ s:BUFFER_ID_RE
+        let id = matchlist(cWORD, s:BUFFER_ID_RE)[1]
+        return s:buffer_get(id)
+      else
+        return s:buffers_list(a:bang, '')
+      endif
+    endif
 
     let idx=0
     for arg in args
