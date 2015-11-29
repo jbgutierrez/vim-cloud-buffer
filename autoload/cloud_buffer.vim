@@ -64,7 +64,6 @@ function! s:buffer_open(buffer_name, split) abort
   endif
 endfunction
 
-exe "rubyfile " . expand('<sfile>:p:h') . "/../ruby/cloud_buffer.rb"
 function! s:rest_api(cmd, ...)
   if (a:0 > 0)
     unlet! g:vim_cloud_buffer_data
@@ -73,6 +72,13 @@ function! s:rest_api(cmd, ...)
   exe "ruby VimCloudBuffer::gw.".a:cmd
   return g:vim_cloud_buffer_data
 endfunction
+try
+  exe "rubyfile " . expand('<sfile>:p:h') . "/../ruby/cloud_buffer.rb"
+catch
+  function! s:rest_api(cmd, ...)
+    throw "Run `gem install rest-client` to install missing gems and restart vim."
+  endfunction
+endtry
 
 function! s:serialize_buffer()
   let now = localtime()

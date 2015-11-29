@@ -1,9 +1,14 @@
 # coding: UTF-8
 require 'rubygems'
-require 'rest-client'
 require "delegate"
 require 'logger'
 require 'json'
+
+begin
+  require 'rest-client'
+rescue LoadError
+  ::Kernel.raise "Run `gem install rest-client` to install missing gems."
+end
 
 module VimCloudBuffer
 
