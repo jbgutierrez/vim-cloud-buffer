@@ -174,13 +174,14 @@ endfunction
 function! s:format_buffer(buffer) abort
   let content = substitute(a:buffer.content, '[\r\n\t]', ' ', 'g')
   let content = substitute(content, '  ', ' ', 'g')
-  let lines   = len(split(a:buffer.content, "\n"))
   let id      = a:buffer._id['$oid']
-  if exists('a:buffer.deleted_at') | exe 'syn match CloudBufferDeleted ".*'.id.'.*"' | endif
+  if exists('a:buffer.deleted_at') | exe 'syn match CloudBufferDeleted ".*'.id.'.*" contains=CloudBufferId' | endif
   let filetype = a:buffer.options.filetype
   let updated_at = s:distance_of_time_in_words(a:buffer.updated_at)
-  let buffer_name = exists('a:buffer.buffer_name') ? a:buffer.buffer_name : id
-  return printf(' %4S  |  %4S  |  %-10s  |  %-24s  |  BufferId:%14s  |  %s ', updated_at, lines, filetype, buffer_name, id, content)
+  let buffer_name = exists('a:buffer.buffer_name') ? a:buffer.buffer_name : '<unnamed>'
+  let meta = printf('%4s  BufferId:%14s  %s', updated_at, id, buffer_name)
+  if filetype != '' | let meta .= ' ('.filetype.')' | endif
+  return printf('%40s   ☞  %s', meta, content)
 endfunction
 
 let s:BUFFER_ID_RE = '\vBufferId:<([0-9a-z]{24})>'
@@ -203,18 +204,11 @@ function! s:buffers_list_action(action) abort
   endif
 endfunction
 
-function s:buffers_list_append(buffers)
+function! s:buffers_list_append(buffers)
   setlocal modifiable
   let position = b:options.sk
-  let horizontal_line = '-------|--------|--------------|----------------------------|-------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
-  if !position
-    0,%delete
-    let header = ' date  |  locs  |  filetype    |  buffer name               |  id                                 |  contents'
-    call append(0, [horizontal_line, header, horizontal_line])
-  endif
   let lines = map(a:buffers, 's:format_buffer(v:val)')
-  call setline(position + 4, lines)
-  call append('$', horizontal_line)
+  call setline(position + 1, lines)
   if len(a:buffers) == 1000 | call append('$', 'more...') | endif
   setlocal nomodifiable
 endfunction
@@ -237,8 +231,14 @@ function! s:buffers_list(include_deleted,regex) abort
   let buffers = s:rest_api('list', options)
   call s:buffer_open('list', 1)
 
+
+  if has("conceal") | syn match CloudBufferId "\vBufferId:<([0-9a-z]{24})>" conceal cchar=∴ | end
   hi def link CloudBufferDeleted Comment
+  syn match CloudBufferContent "☞.*"
+  hi def link CloudBufferContent Comment
   syn clear CloudBufferDeleted
+  setl concealcursor=n
+  setl conceallevel=1
   let b:options = options
 
   call s:buffers_list_append(buffers)
