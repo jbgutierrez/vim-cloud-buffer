@@ -84,6 +84,7 @@ function! s:serialize_buffer()
   let now = localtime()
   if exists('b:buffer')
     let buffer = b:buffer
+    if exists('buffer.deleted_at') | unlet! buffer.deleted_at | endif
   else
     let buffer = { 'created_at': now, 'updated_at': now, 'updates': 0 }
   endif
