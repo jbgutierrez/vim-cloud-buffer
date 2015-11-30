@@ -214,6 +214,7 @@ endfunction
 function! s:buffers_list_append(buffers)
   setlocal modifiable
   let position = b:options.sk
+  if !position | 0,%delete | endif
   let lines = map(a:buffers, 's:format_buffer(v:val)')
   call setline(position + 1, lines)
   if len(a:buffers) == 1000 | call append('$', 'more...') | endif
