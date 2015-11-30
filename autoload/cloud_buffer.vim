@@ -85,7 +85,7 @@ function! s:serialize_buffer()
   if exists('b:buffer')
     let buffer = b:buffer
   else
-    let buffer = { 'created_at': now, 'updated_at': now }
+    let buffer = { 'created_at': now, 'updated_at': now, 'updates': 0 }
   endif
 
   if now - buffer.updated_at > 3600 | let buffer.updates += 1 | endif
