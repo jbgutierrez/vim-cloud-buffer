@@ -59,8 +59,6 @@ Delete a buffer
 
 ## Requirements
 
-Current version needs your Vim to be compiled with `+ruby` feature. Most Linux distributions and the official Windows binary you'll have the `+ruby` built-in but, please ensure yours is enabled by running `:ver`.
-
 ## Installation
 
 ### Plugin managers
@@ -72,6 +70,7 @@ With pathogen.vim, just clone this repository inside `~/.vim/bundle`:
 
 ```bash
 git clone https://github.com/jbgutierrez/vim-cloud-buffer.git ~/.vim/bundle/vim-cloud-buffer
+git clone https://github.com/mattn/webapi-vim.git ~/.vim/bundle/webapi-vim
 ```
 
 With the other plugin managers, just follow the instructions on the homepage of each plugin. In general, you just have to add a line to your `~/.vimrc`:
@@ -79,10 +78,13 @@ With the other plugin managers, just follow the instructions on the homepage of 
 ```viml
 " vim-plug
 Plug 'jbgutierrez/vim-cloud-buffer'
+Plug 'mattn/webapi-vim'
 " NeoBundle
 NeoBundle 'jbgutierrez/vim-cloud-buffer'
+NeoBundle 'mattn/webapi-vim'
 " Vundle
 Plugin 'jbgutierrez/vim-cloud-buffer'
+Plugin 'mattn/webapi-vim'
 ```
 
 ### Manual installation
@@ -90,13 +92,13 @@ Plugin 'jbgutierrez/vim-cloud-buffer'
 Copy the contents of each directory in the respective directories inside
 `~/.vim`.
 
-### Ruby gem dependency
+You need to install webapi-vim also:
 
-Current version uses `rest-client` ruby gem to handle network communication. To install it just run the following command:
+  http://www.vim.org/scripts/script.php?script_id=4019
 
-```bash
-gem install rest-client
-```
+If you want to use latest one:
+
+  https://github.com/mattn/webapi-vim
 
 # Setup
 
@@ -107,13 +109,6 @@ Just declare the following two variables in your `.vimrc`
 ```viml
 let g:vim_cloud_buffer_url = "https://api.mongolab.com/api/1/databases/vim-cloud-buffer/collections/buffers"
 let g:vim_cloud_buffer_api_key = "SECRET"
-```
-
-If you happen to have your `.vimrc` publicly available, just set the following environment variables instead:
-
-```bash
-export VIM_CLOUD_BUFFER_URL="https://api.mongolab.com/api/1/databases/vim-cloud-buffer/collections/buffers"
-export VIM_CLOUD_BUFFER_API_KEY="SECRET"
 ```
 
 ## Bugs

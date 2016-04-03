@@ -3,8 +3,7 @@
 " Author:        Javier Blanco <http://jbgutierrez.info>
 " =============================================================================
 
-let g:loaded_cloud_buffer   = 1
-let g:vim_cloud_buffer_data = 0
+let g:loaded_cloud_buffer = 1
 
 function! s:error(str)
   echohl ErrorMsg
@@ -64,21 +63,21 @@ function! s:buffer_open(buffer_name, split) abort
   endif
 endfunction
 
-function! s:rest_api(cmd, ...)
-  if (a:0 > 0)
-    unlet! g:vim_cloud_buffer_data
-    let g:vim_cloud_buffer_data = a:1
+function! s:rest_api(path, ...)
+  let headers = { 'Content-Type': 'application/json' }
+  let args = { 'apiKey': g:vim_cloud_buffer_api_key }
+  let options = a:0 > 0 ? a:000[0] : {}
+  let options = extend({ 'method': 'GET', 'data': '' }, options)
+  if has_key(options, 'params')
+    for key in keys(options.params)
+      let args[key] = webapi#json#encode(options.params[key])
+    endfor
   endif
-  exe "ruby VimCloudBuffer::gw.".a:cmd
-  return g:vim_cloud_buffer_data
+  let query = webapi#http#encodeURI(args)
+  let url = g:vim_cloud_buffer_url . '/' . a:path . '?' . query
+  let res = webapi#http#post(url, webapi#json#encode(options.data), headers, options.method)
+  return webapi#json#decode(res.content)
 endfunction
-try
-  exe "rubyfile " . expand('<sfile>:p:h') . "/../ruby/cloud_buffer.rb"
-catch
-  function! s:rest_api(cmd, ...)
-    throw "Run `gem install rest-client` to install missing gems and restart vim."
-  endfunction
-endtry
 
 function! s:serialize_buffer()
   let now = localtime()
@@ -112,7 +111,7 @@ function! s:buffer_add() abort
   let unnamed_buffer = bufname('%') == ''
   let buffer = s:serialize_buffer()
   if !unnamed_buffer | let buffer.buffer_name = fnamemodify(bufname('%'), ':t') | endif
-  let buffer = s:rest_api('add', buffer)
+  let buffer = s:rest_api('/', { 'data': buffer, 'method': 'POST' })
 
   let content = buffer.content
   call setline(1, split(content, "\n"))
@@ -139,7 +138,7 @@ function! s:buffer_update(fname) abort
   let synced =  a:fname !~# b:buffer_id
 
   if synced | let buffer.buffer_name = buffer_name | endif
-  let buffer = s:rest_api('update("'.b:buffer_id.'")', buffer)
+  let buffer = s:rest_api(b:buffer_id, { 'data': buffer, 'method': 'POST' })
   if synced
     if buffer_name != fnamemodify(bufname('%'), ':t')
       setlocal buftype=
@@ -160,7 +159,7 @@ function! s:buffer_get(id) abort
   if (exists('b:buffer')) | return | endif
 
   redraw | echomsg 'Getting buffer... '
-  let buffer = s:rest_api('get("'.a:id.'")')
+  let buffer = s:rest_api(a:id)
   call s:buffer_open(buffer_name, 1)
   if exists('buffer.buffer_name')
     exe "file" s:bufprefix.buffer_name.':'.buffer.buffer_name
@@ -205,7 +204,7 @@ function! s:buffers_list_action(action) abort
   if line =~# '^more\.\.\.$'
     let b:options.sk += 1000
     redraw | echomsg 'Loading more buffers...'
-    let buffers = s:rest_api('list', b:options)
+    let buffers = s:rest_api('/', { 'params': b:options})
     call s:buffers_list_append(buffers)
     redraw | echo ''
   endif
@@ -236,7 +235,7 @@ function! s:buffers_list(include_deleted,regex) abort
         \ }
   if a:include_deleted | unlet options.q.deleted_at | endif
   if a:regex == '' | unlet options.q.content | endif
-  let buffers = s:rest_api('list', options)
+  let buffers = s:rest_api('/', { 'params': options })
   call s:buffer_open('list', 1)
 
 
@@ -263,16 +262,18 @@ function! s:buffer_delete(permanent) abort
   if choice != 1 | return | endif
   redraw | echomsg 'Deleting buffer... '
   if a:permanent
-    call s:rest_api('remove("'.b:buffer_id.'")')
+    call s:rest_api(b:buffer_id, { 'method': 'DELETE' })
   else
-    call s:rest_api('update("'.b:buffer_id.'")', { '$set': { 'deleted_at': localtime() } })
+    let data = { '$set': { 'deleted_at': localtime() } }
+    call s:rest_api(b:buffer_id, { 'data': data, 'method': 'POST' })
   end
   redraw | echo ''
 endfunction
 
 function! s:buffer_restore(id) abort
   redraw | echomsg 'Restoring deleted buffer... '
-  call s:rest_api('update("'.a:id.'")', { '$unset': { 'deleted_at': 1 } })
+  let data = { '$unset': { 'deleted_at': 1 } }
+  call s:rest_api(a:id, { 'data': data, 'method': 'POST' })
   redraw | echo ''
 endfunction
 
@@ -283,8 +284,16 @@ function! s:shellwords(str) abort
   return words
 endfunction
 
+if globpath(&rtp, 'autoload/webapi/http.vim') ==# ''
+  echohl ErrorMsg | echomsg 'CloudBuffer requires ''webapi'', please install https://github.com/mattn/webapi-vim' | echohl None
+  finish
+else
+  call webapi#json#true()
+endif
+
 let s:UNKNOWN_RE = '\v^--*(.*)$'
 function! cloud_buffer#CloudBuffer(bang, ...) abort
+
   try
     if a:0
       let args = s:shellwords(a:1)
